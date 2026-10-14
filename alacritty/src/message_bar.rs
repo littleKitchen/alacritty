@@ -100,7 +100,10 @@ impl Message {
         // Append close button to first line.
         if button_len <= num_cols {
             if let Some(line) = lines.get_mut(0) {
-                line.truncate(num_cols - button_len);
+                // Truncate by characters, since each character occupies one cell.
+                let end =
+                    line.char_indices().nth(num_cols - button_len).map_or(line.len(), |(i, _)| i);
+                line.truncate(end);
                 line.push_str(CLOSE_BUTTON_TEXT);
             }
         }
@@ -374,6 +377,18 @@ mod tests {
             String::from("c 👩 d  "),
             String::from("fgh    ")
         ]);
+    }
+
+    #[test]
+    fn close_button_with_multibyte_chars() {
+        let input = "éééééé";
+        let mut message_buffer = MessageBuffer::default();
+        message_buffer.push(Message::new(input.into(), MessageType::Error));
+        let size = SizeInfo::new(8., 10., 1., 1., 0., 0., false);
+
+        let lines = message_buffer.message().unwrap().text(&size);
+
+        assert_eq!(lines, vec![String::from("éééé [X]"), String::from("éé      ")]);
     }
 
     #[test]
